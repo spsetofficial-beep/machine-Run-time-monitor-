@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Machinery Insight | Real-Time Monitor</title>
+  <!-- Google Fonts + simple reset -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <!-- Font Awesome 6 (free) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f0f4f8;
+      font-family: 'Inter', sans-serif;
+      padding: 24px 20px;
+      color: #1a2634;
+    }
+
+    .dashboard-container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+      background: white;
+      padding: 16px 28px;
+      border-radius: 32px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .title-section h1 {
+      font-size: 1.7rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #1e3c72, #2b4c7c);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      letter-spacing: -0.3px;
+    }
+
+    .title-section p {
+      font-size: 0.85rem;
+      color: #5a6e7c;
+      margin-top: 6px;
+    }
+
+    .live-badge {
+      background: #eef2ff;
+      padding: 8px 18px;
+      border-radius: 60px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    .live-dot {
+      width: 12px;
+      height: 12px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(16,185,129,0.5);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
+      70% { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+      100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+    }
+
+    /* KPI cards row */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .kpi-card {
+      background: white;
+      border-radius: 28px;
+      padding: 20px 18px;
+      box-shadow: 0 5px 12px rgba(0,0,0,0.04);
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 24px -8px rgba(0,0,0,0.1);
+    }
+
+    .kpi-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+      color: #5b7a9a;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .kpi-value {
+      font-size: 2.3rem;
+      font-weight: 700;
+      color: #1e293b;
+      line-height: 1.2;
+    }
+
+    .kpi-unit {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #5e7e9e;
+      margin-left: 4px;
+    }
+
+    .trend-badge {
+      font-size: 0.7rem;
+      background: #eef2ff;
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 30px;
+      margin-top: 8px;
+    }
+
+    /* Machine status + runtime area */
+    .dual-panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      margin-bottom: 30px;
+    }
+
+    .status-panel {
+      flex: 1.2;
+      background: white;
+      border-radius: 28px;
+      padding: 22px 24px;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.04);
+    }
+
+    .runtime-panel {
+      flex: 1;
+      background: white;
+      border-radius: 28px;
+      padding: 22px 24px;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.04);
+    }
+
+    .section-title {
+      font-weight: 600;
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-left: 4px solid #2c6e9e;
+      padding-left: 16px;
+    }
+
+    .machine-state {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .state-badge {
+      padding: 8px 26px;
+      border-radius: 60px;
+      font-weight: 700;
+      font-size: 1.3rem;
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    .state-badge.running {
+      background: #dff9e6;
+      color: #0e6b3e;
+      box-shadow: inset 0 0 0 1px #b2dfc0;
+    }
+
+    .state-badge.stopped {
+      background: #ffe8e6;
+      color: #b91c1c;
+    }
+
+    .fault-alert {
+      background: #fff1f0;
+      border-radius: 48px;
+      padding: 12px 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .runtime-numbers {
+      font-size: 2.2rem;
+      font-weight: 800;
+      font-family: monospace;
+      letter-spacing: 1px;
+      background: #f8fafc;
+      padding: 12px 18px;
+      border-radius: 24px;
+      text-align: center;
+    }
+
+    /* logs table */
+    .logs-section {
+      background: white;
+      border-radius: 28px;
+      padding: 20px 0 12px 0;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.03);
+      overflow-x: auto;
+    }
+
+    .logs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px 12px 24px;
+      flex-wrap: wrap;
+    }
+
+    .logs-header h3 {
+      font-weight: 600;
+      font-size: 1.2rem;
+    }
+
+    .refresh-note {
+      font-size: 0.7rem;
+      color: #5f7f9e;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 14px 16px;
+      background: #f9fcff;
+      font-weight: 600;
+      color: #2c5270;
+      border-bottom: 1px solid #e2edf7;
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #ecf3f9;
+      font-weight: 500;
+    }
+
+    .status-badge {
+      background: #e2f0e8;
+      padding: 4px 12px;
+      border-radius: 40px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .fault-badge {
+      background: #ffe0db;
+      color: #bc3900;
+    }
+
+    .timestamp-cell {
+      font-family: monospace;
+      font-size: 0.75rem;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      font-size: 0.7rem;
+      color: #6b8aaa;
+    }
+
+    @media (max-width: 700px) {
+      body { padding: 16px; }
+      .kpi-value { font-size: 1.7rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="dashboard-container">
+  <div class="header">
+    <div class="title-section">
+      <h1><i class="fas fa-industry" style="margin-right: 10px; color: #2c6e9e;"></i>Machinery Runtime Intelligence</h1>
+      <p>Live telemetry · Vibration monitoring · Fault protection</p>
+    </div>
+    <div class="live-badge">
+      <span class="live-dot"></span>
+      <span>STREAMING LIVE</span>
+      <i class="fas fa-bolt" style="color:#f59e0b;"></i>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-title"><i class="fas fa-charging-station"></i> Power</div>
+      <div class="kpi-value"><span id="live-power">0.00</span><span class="kpi-unit">W</span></div>
+      <div class="trend-badge"><i class="fas fa-waveform"></i> real‑time</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title"><i class="fas fa-water"></i> Current</div>
+      <div class="kpi-value"><span id="live-current">0.00</span><span class="kpi-unit">A</span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title"><i class="fas fa-tachometer-alt"></i> Voltage</div>
+      <div class="kpi-value"><span id="live-voltage">0.0</span><span class="kpi-unit">V</span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title"><i class="fas fa-vibration"></i> Vibration</div>
+      <div class="kpi-value"><span id="live-vibration">0</span><span class="kpi-unit">ADC</span></div>
+      <div class="trend-badge" id="vib-trend">threshold: 1800</div>
+    </div>
+  </div>
+
+  <!-- Status & Runtime dual panel -->
+  <div class="dual-panel">
+    <div class="status-panel">
+      <div class="section-title"><i class="fas fa-microchip"></i> Machine State & Safety</div>
+      <div class="machine-state">
+        <div id="machine-status-badge" class="state-badge stopped"><i class="fas fa-power-off"></i> LOADING...</div>
+        <div id="fault-indicator" class="fault-alert" style="background:#f1f5f9;"><i class="fas fa-check-circle"></i> No fault detected</div>
+      </div>
+      <div style="margin-top: 12px; font-size:0.85rem; background:#fafcff; padding: 12px; border-radius: 20px;">
+        <i class="fas fa-info-circle"></i> <strong>Fault logic:</strong> vibration > 1800 → relay OFF + buzzer ON. Machine runtime automatically accumulates.
+      </div>
+    </div>
+    <div class="runtime-panel">
+      <div class="section-title"><i class="fas fa-hourglass-half"></i> Runtime Analytics</div>
+      <div style="display: flex; flex-direction: column; gap: 18px;">
+        <div>
+          <div style="font-weight:500; margin-bottom: 8px;">📆 Total Runtime (seconds)</div>
+          <div class="runtime-numbers" id="total-seconds">0 s</div>
+        </div>
+        <div>
+          <div style="font-weight:500; margin-bottom: 8px;">⏱️ Current session (active)</div>
+          <div class="runtime-numbers" id="current-session">0 s</div>
+        </div>
+        <div style="font-size: 0.75rem; color:#3f6b8c;"><i class="far fa-clock"></i> Last start / stop timestamps updated from Firebase</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live logs from Firebase /machine/logs -->
+  <div class="logs-section">
+    <div class="logs-header">
+      <h3><i class="fas fa-history"></i> Recent machine logs (live updates)</h3>
+      <div class="refresh-note"><i class="fas fa-sync-alt"></i> auto-sync every 3s · last 12 entries</div>
+    </div>
+    <div style="overflow-x: auto;">
+      <table id="logs-table">
+        <thead>
+          <tr><th>Timestamp (Unix)</th><th>Power (W)</th><th>Current (A)</th><th>Voltage (V)</th><th>Vibration</th><th>Status</th></tr>
+        </thead>
+        <tbody id="logs-tbody">
+          <tr><td colspan="6" style="text-align:center;">Loading telemetry logs...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <footer>⚙️ Machine monitor integrated with PZEM004T & vibration sensor | Real‑time relay control simulation</footer>
+</div>
+
+<script>
+  // ---------- FIREBASE CONFIGURATION (identical to your arduino project) ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyAjznu40IqNc99wGQPgwjLHY7VHOs7b_Ng",
+    authDomain: "machine-run-time-monitor.firebaseapp.com",
+    databaseURL: "https://machine-run-time-monitor-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "machine-run-time-monitor",
+    storageBucket: "machine-run-time-monitor.appspot.com",
+    messagingSenderId: "1030522309351",
+    appId: "1:1030522309351:web:xxxxxxxxxxxxxx" // dummy appId, not required for RTDB
+  };
+
+  // Initialize Firebase
+  const app = firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+
+  // DOM elements
+  const powerSpan = document.getElementById('live-power');
+  const currentSpan = document.getElementById('live-current');
+  const voltageSpan = document.getElementById('live-voltage');
+  const vibrationSpan = document.getElementById('live-vibration');
+  const vibTrendSpan = document.getElementById('vib-trend');
+  const machineStatusBadge = document.getElementById('machine-status-badge');
+  const faultIndicatorDiv = document.getElementById('fault-indicator');
+  const totalSecondsSpan = document.getElementById('total-seconds');
+  const currentSessionSpan = document.getElementById('current-session');
+  const logsTbody = document.getElementById('logs-tbody');
+
+  // vibration threshold
+  const VIBRATION_THRESHOLD = 1800;
+
+  // Helper: format seconds to human readable (optional but keep seconds as requested)
+  function formatSeconds(sec) {
+    if (sec === undefined || sec === null) return '0 s';
+    return `${Math.floor(sec)} s`;
+  }
+
+  // Update UI based on live values & status/machineRunning + fault
+  function updateDashboardFromLive(snapshot) {
+    if (!snapshot.exists()) return;
+    const data = snapshot.val();
+    // live fields
+    if (data.power !== undefined) powerSpan.innerText = data.power.toFixed(1);
+    if (data.current !== undefined) currentSpan.innerText = data.current.toFixed(2);
+    if (data.voltage !== undefined) voltageSpan.innerText = data.voltage.toFixed(1);
+    if (data.vibration !== undefined) {
+      const vib = data.vibration;
+      vibrationSpan.innerText = vib;
+      if (vib > VIBRATION_THRESHOLD) {
+        vibTrendSpan.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:#e11d48;"></i> FAULT LEVEL! >1800`;
+        vibTrendSpan.style.color = "#b91c1c";
+      } else {
+        vibTrendSpan.innerHTML = `✓ below threshold (${VIBRATION_THRESHOLD})`;
+        vibTrendSpan.style.color = "#2b6e3c";
+      }
+    }
+    // machine running status
+    if (data.status !== undefined) {
+      const isRunning = data.status === true;
+      if (isRunning) {
+        machineStatusBadge.className = "state-badge running";
+        machineStatusBadge.innerHTML = '<i class="fas fa-play-circle"></i> MACHINE RUNNING';
+      } else {
+        machineStatusBadge.className = "state-badge stopped";
+        machineStatusBadge.innerHTML = '<i class="fas fa-stop-circle"></i> MACHINE STOPPED';
+      }
+    }
+    // Determine fault from vibration (since we also read vibration sensor)
+    const currentVib = data.vibration || 0;
+    const isFault = currentVib > VIBRATION_THRESHOLD;
+    if (isFault) {
+      faultIndicatorDiv.innerHTML = '<i class="fas fa-bell" style="color:#dc2626;"></i> ⚠️ FAULT ACTIVE: High vibration! Relay OFF · Buzzer ON';
+      faultIndicatorDiv.style.background = "#ffebea";
+      faultIndicatorDiv.style.borderLeft = "4px solid #dc2626";
+    } else {
+      faultIndicatorDiv.innerHTML = '<i class="fas fa-shield-alt"></i> System nominal · No fault';
+      faultIndicatorDiv.style.background = "#f1f5f9";
+      faultIndicatorDiv.style.borderLeft = "4px solid #2c6e9e";
+    }
+  }
+
+  // Update Runtime from /machine/runtime node (total_seconds, maybe last_start)
+  function updateRuntime(snapshot) {
+    if (!snapshot.exists()) return;
+    const runtimeData = snapshot.val();
+    if (runtimeData.total_seconds !== undefined) {
+      totalSecondsSpan.innerText = formatSeconds(runtimeData.total_seconds);
+    }
+    // For current session: we can compute from live? but we can also retrieve if last_start exists and machine is running.
+    // However to display accurate current session we need both machineRunning flag from live and last_start epoch
+    // We'll combine data: retrieve last_start (unix) and compare with current time if status is true.
+    // Also we can optionally listen to /machine/live/status and last_start separately. Let's create a more precise approach:
+  }
+
+  // Function to update current session by combining /machine/runtime/last_start and /machine/live/status
+  function updateCurrentSession() {
+    const statusRef = database.ref('/machine/live/status');
+    const lastStartRef = database.ref('/machine/runtime/last_start');
+    Promise.all([statusRef.get(), lastStartRef.get()]).then(([statusSnap, startSnap]) => {
+      const isRunning = statusSnap.val() === true;
+      const lastStartUnix = startSnap.val();
+      if (isRunning && lastStartUnix && typeof lastStartUnix === 'number') {
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        const sessionSeconds = Math.max(0, nowSeconds - lastStartUnix);
+        currentSessionSpan.innerText = formatSeconds(sessionSeconds);
+      } else {
+        currentSessionSpan.innerText = "0 s (idle)";
+      }
+    }).catch(err => console.warn("session calc err", err));
+  }
+
+  // Fetch logs from /machine/logs (most recent 12 entries)
+  function loadRecentLogs() {
+    const logsRef = database.ref('/machine/logs');
+    logsRef.orderByKey().limitToLast(12).get().then((snapshot) => {
+      if (!snapshot.exists()) {
+        logsTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No logs available yet. Waiting for ESP32 data...</td></tr>';
+        return;
+      }
+      const logs = [];
+      snapshot.forEach(child => {
+        const key = child.key;  // timestamp as key
+        const log = child.val();
+        logs.push({ timestamp: key, ...log });
+      });
+      logs.reverse(); // show newest last? Usually newest last but let's show newest first for readability
+      logs.reverse(); // actually we want most recent on top, so reverse after push order (since limitToLast gives ascending)
+      // but after forEach they are ascending oldest->newest. To get newest first, we reverse.
+      logs.reverse();
+      if (logs.length === 0) return;
+      let html = '';
+      for (let log of logs) {
+        const powerVal = log.power !== undefined ? log.power.toFixed(1) : '—';
+        const currentVal = log.current !== undefined ? log.current.toFixed(2) : '—';
+        const voltageVal = log.voltage !== undefined ? log.voltage.toFixed(1) : '—';
+        const vibrationVal = log.vibration !== undefined ? log.vibration : '—';
+        const machineStatus = log.status === true ? 'Running' : 'Stopped';
+        const statusClass = log.status === true ? 'status-badge' : 'status-badge';
+        const timestampRaw = log.timestamp ? log.timestamp : (isNaN(parseInt(log.timestamp)) ? log.timestamp : parseInt(log.timestamp));
+        let displayTime = timestampRaw;
+        if (typeof timestampRaw === 'number' && !isNaN(timestampRaw)) {
+          const date = new Date(timestampRaw * 1000);
+          displayTime = date.toLocaleTimeString() + ' ' + date.toLocaleDateString();
+        } else if (log.timestamp && typeof log.timestamp === 'string' && !isNaN(parseInt(log.timestamp))) {
+          const dateObj = new Date(parseInt(log.timestamp) * 1000);
+          displayTime = dateObj.toLocaleString();
+        } else {
+          displayTime = log.timestamp || '—';
+        }
+        html += `<tr>
+          <td class="timestamp-cell">${displayTime}</td>
+          <td>${powerVal} W</td>
+          <td>${currentVal} A</td>
+          <td>${voltageVal} V</td>
+          <td>${vibrationVal}</td>
+          <td><span class="status-badge">${machineStatus}</span></td>
+        </tr>`;
+      }
+      logsTbody.innerHTML = html;
+    }).catch(err => {
+      console.error("logs fetch error", err);
+      logsTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Error fetching logs. Check connection.</td></tr>';
+    });
+  }
+
+  // Real-time listeners
+  function startRealtimeUpdates() {
+    // 1) Live data node
+    const liveRef = database.ref('/machine/live');
+    liveRef.on('value', (snapshot) => {
+      updateDashboardFromLive(snapshot);
+      // after live update, also update current session because status may have changed
+      updateCurrentSession();
+    }, (error) => {
+      console.warn("Live listener error", error);
+    });
+
+    // 2) Runtime total seconds & also listen to last_start for session updates
+    const runtimeRef = database.ref('/machine/runtime');
+    runtimeRef.on('value', (snapshot) => {
+      updateRuntime(snapshot);
+      updateCurrentSession(); // ensure session recalc if start time changes
+    });
+
+    // additionally watch last_start specifically to update session accurately
+    const lastStartRef = database.ref('/machine/runtime/last_start');
+    lastStartRef.on('value', () => updateCurrentSession());
+
+    // 3) Also logs refresh periodically (but also we can refresh logs when new entry appears)
+    // For better UX, we listen to child_added on logs node, but we also fetch every 6 seconds as backup.
+    // Let's combine both: on child_added to push new entry to top.
+    const logsNode = database.ref('/machine/logs');
+    logsNode.on('child_added', (snapshot) => {
+      // new log entry, we reload logs table to show recent ordering
+      loadRecentLogs();
+    });
+    // initial logs load
+    loadRecentLogs();
+    // also fetch logs periodically to keep sync even if child_added missed (safety)
+    setInterval(() => {
+      loadRecentLogs();
+    }, 7000);
+  }
+
+  // additional helper to update session every second for smooth realtime if machine running
+  setInterval(() => {
+    updateCurrentSession();
+  }, 1100);
+
+  // start everything after page load
+  window.addEventListener('DOMContentLoaded', () => {
+    startRealtimeUpdates();
+    // show initial placeholder
+    setTimeout(() => {
+      updateCurrentSession();
+    }, 500);
+  });
+</script>
+</body>
+</html>
