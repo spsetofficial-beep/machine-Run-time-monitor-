@@ -1,613 +1,688 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Machinery Insight | Real-Time Monitor</title>
-  <!-- Google Fonts + simple reset -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-  <!-- Font Awesome 6 (free) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Machine Run Time Monitor Dashboard</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-    body {
-      background: #f0f4f8;
-      font-family: 'Inter', sans-serif;
-      padding: 24px 20px;
-      color: #1a2634;
-    }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-    .dashboard-container {
-      max-width: 1400px;
-      margin: 0 auto;
-    }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
 
-    /* Header */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 28px;
-      background: white;
-      padding: 16px 28px;
-      border-radius: 32px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.05);
-    }
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
 
-    .title-section h1 {
-      font-size: 1.7rem;
-      font-weight: 600;
-      background: linear-gradient(135deg, #1e3c72, #2b4c7c);
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
-      letter-spacing: -0.3px;
-    }
+        .header h1 {
+            color: #fff;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
 
-    .title-section p {
-      font-size: 0.85rem;
-      color: #5a6e7c;
-      margin-top: 6px;
-    }
+        .header h1 i {
+            color: #00adb5;
+            margin-right: 10px;
+        }
 
-    .live-badge {
-      background: #eef2ff;
-      padding: 8px 18px;
-      border-radius: 60px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 500;
-      font-size: 0.9rem;
-    }
+        .header p {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
 
-    .live-dot {
-      width: 12px;
-      height: 12px;
-      background: #10b981;
-      border-radius: 50%;
-      box-shadow: 0 0 0 0 rgba(16,185,129,0.5);
-      animation: pulse 1.5s infinite;
-    }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-top: 10px;
+        }
 
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
-      70% { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
-      100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
-    }
+        .status-connected {
+            background: rgba(0, 255, 100, 0.2);
+            color: #0f0;
+            border: 1px solid #0f0;
+        }
 
-    /* KPI cards row */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
-    }
+        .status-disconnected {
+            background: rgba(255, 0, 0, 0.2);
+            color: #f00;
+            border: 1px solid #f00;
+        }
 
-    .kpi-card {
-      background: white;
-      border-radius: 28px;
-      padding: 20px 18px;
-      box-shadow: 0 5px 12px rgba(0,0,0,0.04);
-      transition: transform 0.2s, box-shadow 0.2s;
-      border: 1px solid rgba(0,0,0,0.03);
-    }
+        /* Cards Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
 
-    .kpi-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 16px 24px -8px rgba(0,0,0,0.1);
-    }
+        .card {
+            background: rgba(30, 30, 46, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease;
+        }
 
-    .kpi-title {
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      font-weight: 600;
-      color: #5b7a9a;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+        .card:hover {
+            transform: translateY(-5px);
+        }
 
-    .kpi-value {
-      font-size: 2.3rem;
-      font-weight: 700;
-      color: #1e293b;
-      line-height: 1.2;
-    }
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            color: #00adb5;
+            font-size: 1.1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
 
-    .kpi-unit {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: #5e7e9e;
-      margin-left: 4px;
-    }
+        .card-title i {
+            font-size: 1.3rem;
+        }
 
-    .trend-badge {
-      font-size: 0.7rem;
-      background: #eef2ff;
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 30px;
-      margin-top: 8px;
-    }
+        .card-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+            padding: 15px 0;
+        }
 
-    /* Machine status + runtime area */
-    .dual-panel {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 24px;
-      margin-bottom: 30px;
-    }
+        .card-unit {
+            font-size: 0.9rem;
+            color: #888;
+        }
 
-    .status-panel {
-      flex: 1.2;
-      background: white;
-      border-radius: 28px;
-      padding: 22px 24px;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.04);
-    }
+        .card-footer {
+            font-size: 0.75rem;
+            color: #666;
+            text-align: center;
+            margin-top: 10px;
+        }
 
-    .runtime-panel {
-      flex: 1;
-      background: white;
-      border-radius: 28px;
-      padding: 22px 24px;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.04);
-    }
+        /* Special Card Styles */
+        .vibration-card {
+            border-left: 4px solid #ff6b6b;
+        }
 
-    .section-title {
-      font-weight: 600;
-      font-size: 1.2rem;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border-left: 4px solid #2c6e9e;
-      padding-left: 16px;
-    }
+        .relay-card {
+            border-left: 4px solid #4ecdc4;
+        }
 
-    .machine-state {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
+        .vibration-active {
+            background: rgba(255, 107, 107, 0.2);
+            animation: pulse 1s infinite;
+        }
 
-    .state-badge {
-      padding: 8px 26px;
-      border-radius: 60px;
-      font-weight: 700;
-      font-size: 1.3rem;
-      background: #f1f5f9;
-      color: #1e293b;
-    }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
+        }
 
-    .state-badge.running {
-      background: #dff9e6;
-      color: #0e6b3e;
-      box-shadow: inset 0 0 0 1px #b2dfc0;
-    }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
 
-    .state-badge.stopped {
-      background: #ffe8e6;
-      color: #b91c1c;
-    }
+        .status-on {
+            background-color: #4ecdc4;
+            box-shadow: 0 0 5px #4ecdc4;
+        }
 
-    .fault-alert {
-      background: #fff1f0;
-      border-radius: 48px;
-      padding: 12px 20px;
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      font-weight: 600;
-      margin-top: 8px;
-    }
+        .status-off {
+            background-color: #ff6b6b;
+        }
 
-    .runtime-numbers {
-      font-size: 2.2rem;
-      font-weight: 800;
-      font-family: monospace;
-      letter-spacing: 1px;
-      background: #f8fafc;
-      padding: 12px 18px;
-      border-radius: 24px;
-      text-align: center;
-    }
+        .status-vibration {
+            background-color: #ff6b6b;
+            animation: blink 0.5s infinite;
+        }
 
-    /* logs table */
-    .logs-section {
-      background: white;
-      border-radius: 28px;
-      padding: 20px 0 12px 0;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.03);
-      overflow-x: auto;
-    }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
 
-    .logs-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 24px 12px 24px;
-      flex-wrap: wrap;
-    }
+        /* Chart Section */
+        .chart-section {
+            background: rgba(30, 30, 46, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-    .logs-header h3 {
-      font-weight: 600;
-      font-size: 1.2rem;
-    }
+        .chart-section h3 {
+            color: #fff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-    .refresh-note {
-      font-size: 0.7rem;
-      color: #5f7f9e;
-    }
+        .chart-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.8rem;
-    }
+        canvas {
+            max-height: 300px;
+            width: 100% !important;
+        }
 
-    th {
-      text-align: left;
-      padding: 14px 16px;
-      background: #f9fcff;
-      font-weight: 600;
-      color: #2c5270;
-      border-bottom: 1px solid #e2edf7;
-    }
+        /* Log Section */
+        .log-section {
+            background: rgba(30, 30, 46, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-    td {
-      padding: 12px 16px;
-      border-bottom: 1px solid #ecf3f9;
-      font-weight: 500;
-    }
+        .log-section h3 {
+            color: #fff;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-    .status-badge {
-      background: #e2f0e8;
-      padding: 4px 12px;
-      border-radius: 40px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      display: inline-block;
-    }
+        .log-container {
+            background: #0f0f1a;
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
 
-    .fault-badge {
-      background: #ffe0db;
-      color: #bc3900;
-    }
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #aaa;
+        }
 
-    .timestamp-cell {
-      font-family: monospace;
-      font-size: 0.75rem;
-    }
+        .log-entry i {
+            margin-right: 8px;
+            font-size: 0.7rem;
+        }
 
-    footer {
-      text-align: center;
-      margin-top: 32px;
-      font-size: 0.7rem;
-      color: #6b8aaa;
-    }
+        .log-time {
+            color: #00adb5;
+            margin-right: 10px;
+        }
 
-    @media (max-width: 700px) {
-      body { padding: 16px; }
-      .kpi-value { font-size: 1.7rem; }
-    }
-  </style>
+        /* Responsive */
+        @media (max-width: 768px) {
+            .card-value {
+                font-size: 1.8rem;
+            }
+            .chart-container {
+                grid-template-columns: 1fr;
+            }
+            body {
+                padding: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
-<div class="dashboard-container">
-  <div class="header">
-    <div class="title-section">
-      <h1><i class="fas fa-industry" style="margin-right: 10px; color: #2c6e9e;"></i>Machinery Runtime Intelligence</h1>
-      <p>Live telemetry · Vibration monitoring · Fault protection</p>
-    </div>
-    <div class="live-badge">
-      <span class="live-dot"></span>
-      <span>STREAMING LIVE</span>
-      <i class="fas fa-bolt" style="color:#f59e0b;"></i>
-    </div>
-  </div>
-
-  <!-- KPI Cards -->
-  <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-title"><i class="fas fa-charging-station"></i> Power</div>
-      <div class="kpi-value"><span id="live-power">0.00</span><span class="kpi-unit">W</span></div>
-      <div class="trend-badge"><i class="fas fa-waveform"></i> real‑time</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-title"><i class="fas fa-water"></i> Current</div>
-      <div class="kpi-value"><span id="live-current">0.00</span><span class="kpi-unit">A</span></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-title"><i class="fas fa-tachometer-alt"></i> Voltage</div>
-      <div class="kpi-value"><span id="live-voltage">0.0</span><span class="kpi-unit">V</span></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-title"><i class="fas fa-vibration"></i> Vibration</div>
-      <div class="kpi-value"><span id="live-vibration">0</span><span class="kpi-unit">ADC</span></div>
-      <div class="trend-badge" id="vib-trend">threshold: 1800</div>
-    </div>
-  </div>
-
-  <!-- Status & Runtime dual panel -->
-  <div class="dual-panel">
-    <div class="status-panel">
-      <div class="section-title"><i class="fas fa-microchip"></i> Machine State & Safety</div>
-      <div class="machine-state">
-        <div id="machine-status-badge" class="state-badge stopped"><i class="fas fa-power-off"></i> LOADING...</div>
-        <div id="fault-indicator" class="fault-alert" style="background:#f1f5f9;"><i class="fas fa-check-circle"></i> No fault detected</div>
-      </div>
-      <div style="margin-top: 12px; font-size:0.85rem; background:#fafcff; padding: 12px; border-radius: 20px;">
-        <i class="fas fa-info-circle"></i> <strong>Fault logic:</strong> vibration > 1800 → relay OFF + buzzer ON. Machine runtime automatically accumulates.
-      </div>
-    </div>
-    <div class="runtime-panel">
-      <div class="section-title"><i class="fas fa-hourglass-half"></i> Runtime Analytics</div>
-      <div style="display: flex; flex-direction: column; gap: 18px;">
-        <div>
-          <div style="font-weight:500; margin-bottom: 8px;">📆 Total Runtime (seconds)</div>
-          <div class="runtime-numbers" id="total-seconds">0 s</div>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-microchip"></i> Machine Run Time Monitor</h1>
+            <p>Real-time monitoring dashboard for industrial machinery</p>
+            <div id="firebaseStatus" class="status-badge status-disconnected">
+                <i class="fas fa-circle"></i> Connecting to Firebase...
+            </div>
         </div>
-        <div>
-          <div style="font-weight:500; margin-bottom: 8px;">⏱️ Current session (active)</div>
-          <div class="runtime-numbers" id="current-session">0 s</div>
+
+        <div class="grid">
+            <!-- Voltage Card -->
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-bolt"></i>
+                    <span>Voltage</span>
+                </div>
+                <div class="card-value">
+                    <span id="voltageValue">0.00</span>
+                    <span class="card-unit">V</span>
+                </div>
+                <div class="card-footer">AC Voltage (RMS)</div>
+            </div>
+
+            <!-- Current Card -->
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-charging-station"></i>
+                    <span>Current</span>
+                </div>
+                <div class="card-value">
+                    <span id="currentValue">0.00</span>
+                    <span class="card-unit">A</span>
+                </div>
+                <div class="card-footer">Load Current</div>
+            </div>
+
+            <!-- Power Card -->
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Power</span>
+                </div>
+                <div class="card-value">
+                    <span id="powerValue">0.00</span>
+                    <span class="card-unit">W</span>
+                </div>
+                <div class="card-footer">Active Power</div>
+            </div>
+
+            <!-- Energy Card -->
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-database"></i>
+                    <span>Energy</span>
+                </div>
+                <div class="card-value">
+                    <span id="energyValue">0.00</span>
+                    <span class="card-unit">kWh</span>
+                </div>
+                <div class="card-footer">Total Energy Consumed</div>
+            </div>
+
+            <!-- Power Factor Card -->
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-percent"></i>
+                    <span>Power Factor</span>
+                </div>
+                <div class="card-value">
+                    <span id="pfValue">0.00</span>
+                </div>
+                <div class="card-footer">Power Efficiency</div>
+            </div>
+
+            <!-- Vibration Card -->
+            <div class="card vibration-card" id="vibrationCard">
+                <div class="card-title">
+                    <i class="fas fa-waveform"></i>
+                    <span>Vibration Status</span>
+                </div>
+                <div class="card-value">
+                    <span id="vibrationValue">
+                        <span class="status-indicator status-off"></span>
+                        NORMAL
+                    </span>
+                </div>
+                <div class="card-footer">Machine vibration detection</div>
+            </div>
+
+            <!-- Relay Card -->
+            <div class="card relay-card">
+                <div class="card-title">
+                    <i class="fas fa-toggle-on"></i>
+                    <span>Relay / Buzzer</span>
+                </div>
+                <div class="card-value">
+                    <span id="relayValue">
+                        <span class="status-indicator status-off"></span>
+                        OFF
+                    </span>
+                </div>
+                <div class="card-footer">Output control status</div>
+            </div>
         </div>
-        <div style="font-size: 0.75rem; color:#3f6b8c;"><i class="far fa-clock"></i> Last start / stop timestamps updated from Firebase</div>
-      </div>
+
+        <!-- Charts Section -->
+        <div class="chart-section">
+            <h3><i class="fas fa-chart-line"></i> Real-time Trends (Last 20 Readings)</h3>
+            <div class="chart-container">
+                <canvas id="powerChart"></canvas>
+                <canvas id="voltageCurrentChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Event Log -->
+        <div class="log-section">
+            <h3><i class="fas fa-history"></i> Event Log</h3>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry">Waiting for data...</div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Live logs from Firebase /machine/logs -->
-  <div class="logs-section">
-    <div class="logs-header">
-      <h3><i class="fas fa-history"></i> Recent machine logs (live updates)</h3>
-      <div class="refresh-note"><i class="fas fa-sync-alt"></i> auto-sync every 3s · last 12 entries</div>
-    </div>
-    <div style="overflow-x: auto;">
-      <table id="logs-table">
-        <thead>
-          <tr><th>Timestamp (Unix)</th><th>Power (W)</th><th>Current (A)</th><th>Voltage (V)</th><th>Vibration</th><th>Status</th></tr>
-        </thead>
-        <tbody id="logs-tbody">
-          <tr><td colspan="6" style="text-align:center;">Loading telemetry logs...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-  <footer>⚙️ Machine monitor integrated with PZEM004T & vibration sensor | Real‑time relay control simulation</footer>
-</div>
+    <script>
+        // Firebase Configuration (Same as your ESP32)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAjznu40IqNc99wGQPgwjLHY7VHOs7b_Ng",
+            authDomain: "machine-run-time-monitor.firebaseapp.com",
+            databaseURL: "https://machine-run-time-monitor-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "machine-run-time-monitor",
+            storageBucket: "machine-run-time-monitor.firebasestorage.app",
+            messagingSenderId: "YOUR_SENDER_ID", // You may need to add this
+            appId: "YOUR_APP_ID" // You may need to add this
+        };
 
-<script>
-  // ---------- FIREBASE CONFIGURATION (identical to your arduino project) ----------
-  const firebaseConfig = {
-    apiKey: "AIzaSyAjznu40IqNc99wGQPgwjLHY7VHOs7b_Ng",
-    authDomain: "machine-run-time-monitor.firebaseapp.com",
-    databaseURL: "https://machine-run-time-monitor-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "machine-run-time-monitor",
-    storageBucket: "machine-run-time-monitor.appspot.com",
-    messagingSenderId: "1030522309351",
-    appId: "1:1030522309351:web:xxxxxxxxxxxxxx" // dummy appId, not required for RTDB
-  };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-  // Initialize Firebase
-  const app = firebase.initializeApp(firebaseConfig);
-  const database = firebase.database();
+        // Chart variables
+        let powerChart, voltageCurrentChart;
+        let powerData = [];
+        let voltageData = [];
+        let currentData = [];
+        let timeLabels = [];
 
-  // DOM elements
-  const powerSpan = document.getElementById('live-power');
-  const currentSpan = document.getElementById('live-current');
-  const voltageSpan = document.getElementById('live-voltage');
-  const vibrationSpan = document.getElementById('live-vibration');
-  const vibTrendSpan = document.getElementById('vib-trend');
-  const machineStatusBadge = document.getElementById('machine-status-badge');
-  const faultIndicatorDiv = document.getElementById('fault-indicator');
-  const totalSecondsSpan = document.getElementById('total-seconds');
-  const currentSessionSpan = document.getElementById('current-session');
-  const logsTbody = document.getElementById('logs-tbody');
-
-  // vibration threshold
-  const VIBRATION_THRESHOLD = 1800;
-
-  // Helper: format seconds to human readable (optional but keep seconds as requested)
-  function formatSeconds(sec) {
-    if (sec === undefined || sec === null) return '0 s';
-    return `${Math.floor(sec)} s`;
-  }
-
-  // Update UI based on live values & status/machineRunning + fault
-  function updateDashboardFromLive(snapshot) {
-    if (!snapshot.exists()) return;
-    const data = snapshot.val();
-    // live fields
-    if (data.power !== undefined) powerSpan.innerText = data.power.toFixed(1);
-    if (data.current !== undefined) currentSpan.innerText = data.current.toFixed(2);
-    if (data.voltage !== undefined) voltageSpan.innerText = data.voltage.toFixed(1);
-    if (data.vibration !== undefined) {
-      const vib = data.vibration;
-      vibrationSpan.innerText = vib;
-      if (vib > VIBRATION_THRESHOLD) {
-        vibTrendSpan.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:#e11d48;"></i> FAULT LEVEL! >1800`;
-        vibTrendSpan.style.color = "#b91c1c";
-      } else {
-        vibTrendSpan.innerHTML = `✓ below threshold (${VIBRATION_THRESHOLD})`;
-        vibTrendSpan.style.color = "#2b6e3c";
-      }
-    }
-    // machine running status
-    if (data.status !== undefined) {
-      const isRunning = data.status === true;
-      if (isRunning) {
-        machineStatusBadge.className = "state-badge running";
-        machineStatusBadge.innerHTML = '<i class="fas fa-play-circle"></i> MACHINE RUNNING';
-      } else {
-        machineStatusBadge.className = "state-badge stopped";
-        machineStatusBadge.innerHTML = '<i class="fas fa-stop-circle"></i> MACHINE STOPPED';
-      }
-    }
-    // Determine fault from vibration (since we also read vibration sensor)
-    const currentVib = data.vibration || 0;
-    const isFault = currentVib > VIBRATION_THRESHOLD;
-    if (isFault) {
-      faultIndicatorDiv.innerHTML = '<i class="fas fa-bell" style="color:#dc2626;"></i> ⚠️ FAULT ACTIVE: High vibration! Relay OFF · Buzzer ON';
-      faultIndicatorDiv.style.background = "#ffebea";
-      faultIndicatorDiv.style.borderLeft = "4px solid #dc2626";
-    } else {
-      faultIndicatorDiv.innerHTML = '<i class="fas fa-shield-alt"></i> System nominal · No fault';
-      faultIndicatorDiv.style.background = "#f1f5f9";
-      faultIndicatorDiv.style.borderLeft = "4px solid #2c6e9e";
-    }
-  }
-
-  // Update Runtime from /machine/runtime node (total_seconds, maybe last_start)
-  function updateRuntime(snapshot) {
-    if (!snapshot.exists()) return;
-    const runtimeData = snapshot.val();
-    if (runtimeData.total_seconds !== undefined) {
-      totalSecondsSpan.innerText = formatSeconds(runtimeData.total_seconds);
-    }
-    // For current session: we can compute from live? but we can also retrieve if last_start exists and machine is running.
-    // However to display accurate current session we need both machineRunning flag from live and last_start epoch
-    // We'll combine data: retrieve last_start (unix) and compare with current time if status is true.
-    // Also we can optionally listen to /machine/live/status and last_start separately. Let's create a more precise approach:
-  }
-
-  // Function to update current session by combining /machine/runtime/last_start and /machine/live/status
-  function updateCurrentSession() {
-    const statusRef = database.ref('/machine/live/status');
-    const lastStartRef = database.ref('/machine/runtime/last_start');
-    Promise.all([statusRef.get(), lastStartRef.get()]).then(([statusSnap, startSnap]) => {
-      const isRunning = statusSnap.val() === true;
-      const lastStartUnix = startSnap.val();
-      if (isRunning && lastStartUnix && typeof lastStartUnix === 'number') {
-        const nowSeconds = Math.floor(Date.now() / 1000);
-        const sessionSeconds = Math.max(0, nowSeconds - lastStartUnix);
-        currentSessionSpan.innerText = formatSeconds(sessionSeconds);
-      } else {
-        currentSessionSpan.innerText = "0 s (idle)";
-      }
-    }).catch(err => console.warn("session calc err", err));
-  }
-
-  // Fetch logs from /machine/logs (most recent 12 entries)
-  function loadRecentLogs() {
-    const logsRef = database.ref('/machine/logs');
-    logsRef.orderByKey().limitToLast(12).get().then((snapshot) => {
-      if (!snapshot.exists()) {
-        logsTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No logs available yet. Waiting for ESP32 data...</td></tr>';
-        return;
-      }
-      const logs = [];
-      snapshot.forEach(child => {
-        const key = child.key;  // timestamp as key
-        const log = child.val();
-        logs.push({ timestamp: key, ...log });
-      });
-      logs.reverse(); // show newest last? Usually newest last but let's show newest first for readability
-      logs.reverse(); // actually we want most recent on top, so reverse after push order (since limitToLast gives ascending)
-      // but after forEach they are ascending oldest->newest. To get newest first, we reverse.
-      logs.reverse();
-      if (logs.length === 0) return;
-      let html = '';
-      for (let log of logs) {
-        const powerVal = log.power !== undefined ? log.power.toFixed(1) : '—';
-        const currentVal = log.current !== undefined ? log.current.toFixed(2) : '—';
-        const voltageVal = log.voltage !== undefined ? log.voltage.toFixed(1) : '—';
-        const vibrationVal = log.vibration !== undefined ? log.vibration : '—';
-        const machineStatus = log.status === true ? 'Running' : 'Stopped';
-        const statusClass = log.status === true ? 'status-badge' : 'status-badge';
-        const timestampRaw = log.timestamp ? log.timestamp : (isNaN(parseInt(log.timestamp)) ? log.timestamp : parseInt(log.timestamp));
-        let displayTime = timestampRaw;
-        if (typeof timestampRaw === 'number' && !isNaN(timestampRaw)) {
-          const date = new Date(timestampRaw * 1000);
-          displayTime = date.toLocaleTimeString() + ' ' + date.toLocaleDateString();
-        } else if (log.timestamp && typeof log.timestamp === 'string' && !isNaN(parseInt(log.timestamp))) {
-          const dateObj = new Date(parseInt(log.timestamp) * 1000);
-          displayTime = dateObj.toLocaleString();
-        } else {
-          displayTime = log.timestamp || '—';
+        // Log function
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            const timestamp = new Date().toLocaleTimeString();
+            let icon = '<i class="fas fa-info-circle"></i>';
+            if (type === 'warning') icon = '<i class="fas fa-exclamation-triangle" style="color: #ffaa00;"></i>';
+            if (type === 'danger') icon = '<i class="fas fa-bell" style="color: #ff6b6b;"></i>';
+            if (type === 'success') icon = '<i class="fas fa-check-circle" style="color: #4ecdc4;"></i>';
+            
+            logEntry.innerHTML = `${icon} <span class="log-time">[${timestamp}]</span> ${message}`;
+            logContainer.insertBefore(logEntry, logContainer.firstChild);
+            
+            // Keep only last 50 logs
+            while (logContainer.children.length > 50) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
         }
-        html += `<tr>
-          <td class="timestamp-cell">${displayTime}</td>
-          <td>${powerVal} W</td>
-          <td>${currentVal} A</td>
-          <td>${voltageVal} V</td>
-          <td>${vibrationVal}</td>
-          <td><span class="status-badge">${machineStatus}</span></td>
-        </tr>`;
-      }
-      logsTbody.innerHTML = html;
-    }).catch(err => {
-      console.error("logs fetch error", err);
-      logsTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Error fetching logs. Check connection.</td></tr>';
-    });
-  }
 
-  // Real-time listeners
-  function startRealtimeUpdates() {
-    // 1) Live data node
-    const liveRef = database.ref('/machine/live');
-    liveRef.on('value', (snapshot) => {
-      updateDashboardFromLive(snapshot);
-      // after live update, also update current session because status may have changed
-      updateCurrentSession();
-    }, (error) => {
-      console.warn("Live listener error", error);
-    });
+        // Update Firebase connection status
+        function updateFirebaseStatus(connected) {
+            const statusEl = document.getElementById('firebaseStatus');
+            if (connected) {
+                statusEl.className = 'status-badge status-connected';
+                statusEl.innerHTML = '<i class="fas fa-circle"></i> Firebase Connected';
+                addLog('Firebase connection established', 'success');
+            } else {
+                statusEl.className = 'status-badge status-disconnected';
+                statusEl.innerHTML = '<i class="fas fa-circle"></i> Firebase Disconnected';
+                addLog('Firebase connection lost', 'warning');
+            }
+        }
 
-    // 2) Runtime total seconds & also listen to last_start for session updates
-    const runtimeRef = database.ref('/machine/runtime');
-    runtimeRef.on('value', (snapshot) => {
-      updateRuntime(snapshot);
-      updateCurrentSession(); // ensure session recalc if start time changes
-    });
+        // Initialize Charts
+        function initCharts() {
+            const ctxPower = document.getElementById('powerChart').getContext('2d');
+            const ctxVoltageCurrent = document.getElementById('voltageCurrentChart').getContext('2d');
 
-    // additionally watch last_start specifically to update session accurately
-    const lastStartRef = database.ref('/machine/runtime/last_start');
-    lastStartRef.on('value', () => updateCurrentSession());
+            powerChart = new Chart(ctxPower, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Power (W)',
+                        data: [],
+                        borderColor: '#ff6b6b',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#fff' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#fff' }
+                        },
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#fff', maxRotation: 45, minRotation: 45 }
+                        }
+                    }
+                }
+            });
 
-    // 3) Also logs refresh periodically (but also we can refresh logs when new entry appears)
-    // For better UX, we listen to child_added on logs node, but we also fetch every 6 seconds as backup.
-    // Let's combine both: on child_added to push new entry to top.
-    const logsNode = database.ref('/machine/logs');
-    logsNode.on('child_added', (snapshot) => {
-      // new log entry, we reload logs table to show recent ordering
-      loadRecentLogs();
-    });
-    // initial logs load
-    loadRecentLogs();
-    // also fetch logs periodically to keep sync even if child_added missed (safety)
-    setInterval(() => {
-      loadRecentLogs();
-    }, 7000);
-  }
+            voltageCurrentChart = new Chart(ctxVoltageCurrent, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Voltage (V)',
+                            data: [],
+                            borderColor: '#4ecdc4',
+                            backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Current (A)',
+                            data: [],
+                            borderColor: '#ffe66d',
+                            backgroundColor: 'rgba(255, 230, 109, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#fff' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#fff' }
+                        },
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#fff', maxRotation: 45, minRotation: 45 }
+                        }
+                    }
+                }
+            });
+        }
 
-  // additional helper to update session every second for smooth realtime if machine running
-  setInterval(() => {
-    updateCurrentSession();
-  }, 1100);
+        // Update charts with new data
+        function updateCharts(voltage, current, power) {
+            const now = new Date().toLocaleTimeString();
+            
+            // Add new data
+            timeLabels.push(now);
+            powerData.push(power);
+            voltageData.push(voltage);
+            currentData.push(current);
+            
+            // Keep only last 20 points
+            if (timeLabels.length > 20) {
+                timeLabels.shift();
+                powerData.shift();
+                voltageData.shift();
+                currentData.shift();
+            }
+            
+            // Update Power Chart
+            powerChart.data.labels = [...timeLabels];
+            powerChart.data.datasets[0].data = [...powerData];
+            powerChart.update();
+            
+            // Update Voltage/Current Chart
+            voltageCurrentChart.data.labels = [...timeLabels];
+            voltageCurrentChart.data.datasets[0].data = [...voltageData];
+            voltageCurrentChart.data.datasets[1].data = [...currentData];
+            voltageCurrentChart.update();
+        }
 
-  // start everything after page load
-  window.addEventListener('DOMContentLoaded', () => {
-    startRealtimeUpdates();
-    // show initial placeholder
-    setTimeout(() => {
-      updateCurrentSession();
-    }, 500);
-  });
-</script>
+        // Previous values for detecting changes
+        let prevVibration = false;
+        let prevPower = 0;
+
+        // Listen to Firebase Realtime Database
+        function setupFirebaseListeners() {
+            const machineRef = database.ref('/machine');
+            
+            // Connection status
+            database.ref('.info/connected').on('value', (snap) => {
+                updateFirebaseStatus(snap.val() === true);
+            });
+            
+            // Voltage listener
+            machineRef.child('voltage').on('value', (snap) => {
+                const voltage = snap.val() || 0;
+                document.getElementById('voltageValue').innerText = voltage.toFixed(2);
+            });
+            
+            // Current listener
+            machineRef.child('current').on('value', (snap) => {
+                const current = snap.val() || 0;
+                document.getElementById('currentValue').innerText = current.toFixed(2);
+            });
+            
+            // Power listener
+            machineRef.child('power').on('value', (snap) => {
+                const power = snap.val() || 0;
+                const prev = prevPower;
+                prevPower = power;
+                document.getElementById('powerValue').innerText = power.toFixed(2);
+                
+                // Log significant power changes (>10W)
+                if (Math.abs(power - prev) > 10 && prev !== 0) {
+                    const change = power - prev;
+                    addLog(`Power ${change > 0 ? 'increased' : 'decreased'} by ${Math.abs(change).toFixed(1)}W`, 'info');
+                }
+            });
+            
+            // Energy listener
+            machineRef.child('energy').on('value', (snap) => {
+                const energy = snap.val() || 0;
+                document.getElementById('energyValue').innerText = energy.toFixed(3);
+            });
+            
+            // Power Factor listener
+            machineRef.child('pf').on('value', (snap) => {
+                const pf = snap.val() || 0;
+                document.getElementById('pfValue').innerText = pf.toFixed(3);
+            });
+            
+            // Vibration listener
+            machineRef.child('vibration').on('value', (snap) => {
+                const vibration = snap.val() === true;
+                const vibrationSpan = document.getElementById('vibrationValue');
+                const vibrationCard = document.getElementById('vibrationCard');
+                
+                if (vibration) {
+                    vibrationSpan.innerHTML = '<span class="status-indicator status-vibration"></span> VIBRATION DETECTED!';
+                    vibrationCard.classList.add('vibration-active');
+                    addLog('⚠️ VIBRATION DETECTED! Machine may be running or experiencing issues', 'danger');
+                } else {
+                    vibrationSpan.innerHTML = '<span class="status-indicator status-off"></span> NORMAL';
+                    vibrationCard.classList.remove('vibration-active');
+                }
+                
+                // Log vibration state change
+                if (vibration !== prevVibration) {
+                    addLog(`Vibration status changed to: ${vibration ? 'ACTIVE' : 'NORMAL'}`, vibration ? 'danger' : 'success');
+                    prevVibration = vibration;
+                }
+            });
+            
+            // Relay status listener
+            machineRef.child('relay_status').on('value', (snap) => {
+                const relay = snap.val() === true;
+                const relaySpan = document.getElementById('relayValue');
+                
+                if (relay) {
+                    relaySpan.innerHTML = '<span class="status-indicator status-on"></span> ON (Buzzer Active)';
+                    addLog('Relay activated - Buzzer ON', 'warning');
+                } else {
+                    relaySpan.innerHTML = '<span class="status-indicator status-off"></span> OFF';
+                }
+            });
+            
+            // Combined listener for charts - listen to all three
+            let lastVoltage = 0, lastCurrent = 0, lastPower = 0;
+            machineRef.child('voltage').on('value', (snap) => {
+                lastVoltage = snap.val() || 0;
+                if (lastCurrent !== 0 || lastPower !== 0) {
+                    updateCharts(lastVoltage, lastCurrent, lastPower);
+                }
+            });
+            machineRef.child('current').on('value', (snap) => {
+                lastCurrent = snap.val() || 0;
+                if (lastVoltage !== 0 || lastPower !== 0) {
+                    updateCharts(lastVoltage, lastCurrent, lastPower);
+                }
+            });
+            machineRef.child('power').on('value', (snap) => {
+                lastPower = snap.val() || 0;
+                if (lastVoltage !== 0 || lastCurrent !== 0) {
+                    updateCharts(lastVoltage, lastCurrent, lastPower);
+                }
+            });
+            
+            addLog('Real-time monitoring active - listening to Firebase', 'success');
+        }
+        
+        // Error handling for Firebase
+        database.ref('/machine').on('error', (error) => {
+            console.error('Firebase error:', error);
+            addLog(`Firebase error: ${error.message}`, 'danger');
+        });
+        
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            setupFirebaseListeners();
+            
+            // Add initial welcome log
+            addLog('Dashboard loaded - Machine Run Time Monitor', 'success');
+            addLog('Waiting for ESP32 data...', 'info');
+        });
+    </script>
 </body>
 </html>
