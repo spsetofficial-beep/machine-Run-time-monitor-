@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Machine Run Time Monitor Dashboard</title>
+    <title>Machine Run Time Monitor - Real-Time Dashboard</title>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
@@ -71,6 +71,12 @@
             background: rgba(255, 0, 0, 0.2);
             color: #f00;
             border: 1px solid #f00;
+        }
+
+        .status-connecting {
+            background: rgba(255, 255, 0, 0.2);
+            color: #ff0;
+            border: 1px solid #ff0;
         }
 
         /* Cards Grid */
@@ -249,12 +255,106 @@
             margin-right: 10px;
         }
 
+        /* Firebase Config Panel */
+        .config-panel {
+            background: rgba(30, 30, 46, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .config-panel h3 {
+            color: #00adb5;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .config-input {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            color: #fff;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+        }
+
+        .input-group input {
+            background: #0f0f1a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #00adb5;
+        }
+
+        .config-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #00adb5;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #008c94;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #4a5568;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #2d3748;
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #ff5252;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .card-value {
                 font-size: 1.8rem;
             }
             .chart-container {
+                grid-template-columns: 1fr;
+            }
+            .config-input {
                 grid-template-columns: 1fr;
             }
             body {
@@ -268,8 +368,38 @@
         <div class="header">
             <h1><i class="fas fa-microchip"></i> Machine Run Time Monitor</h1>
             <p>Real-time monitoring dashboard for industrial machinery</p>
-            <div id="firebaseStatus" class="status-badge status-disconnected">
-                <i class="fas fa-circle"></i> Connecting to Firebase...
+            <div id="firebaseStatus" class="status-badge status-connecting">
+                <i class="fas fa-circle"></i> Not Connected - Configure Firebase
+            </div>
+        </div>
+
+        <!-- Firebase Configuration Panel -->
+        <div class="config-panel" id="configPanel">
+            <h3><i class="fas fa-database"></i> Firebase Configuration</h3>
+            <div class="config-input">
+                <div class="input-group">
+                    <label>API Key *</label>
+                    <input type="text" id="apiKeyInput" placeholder="Enter your Firebase API Key" value="AIzaSyAjznu40IqNc99wGQPgwjLHY7VHOs7b_Ng">
+                </div>
+                <div class="input-group">
+                    <label>Database URL *</label>
+                    <input type="text" id="databaseUrlInput" placeholder="https://your-project.firebaseio.com/" value="https://machine-run-time-monitor-default-rtdb.asia-southeast1.firebasedatabase.app/">
+                </div>
+                <div class="input-group">
+                    <label>Project ID</label>
+                    <input type="text" id="projectIdInput" placeholder="your-project-id" value="machine-run-time-monitor">
+                </div>
+            </div>
+            <div class="config-buttons">
+                <button class="btn btn-primary" onclick="connectToFirebase()">
+                    <i class="fas fa-plug"></i> Connect to Firebase
+                </button>
+                <button class="btn btn-secondary" onclick="loadSavedConfig()">
+                    <i class="fas fa-upload"></i> Load Saved Config
+                </button>
+                <button class="btn btn-danger" onclick="disconnectFirebase()">
+                    <i class="fas fa-unlink"></i> Disconnect
+                </button>
             </div>
         </div>
 
@@ -281,7 +411,7 @@
                     <span>Voltage</span>
                 </div>
                 <div class="card-value">
-                    <span id="voltageValue">0.00</span>
+                    <span id="voltageValue">--</span>
                     <span class="card-unit">V</span>
                 </div>
                 <div class="card-footer">AC Voltage (RMS)</div>
@@ -294,7 +424,7 @@
                     <span>Current</span>
                 </div>
                 <div class="card-value">
-                    <span id="currentValue">0.00</span>
+                    <span id="currentValue">--</span>
                     <span class="card-unit">A</span>
                 </div>
                 <div class="card-footer">Load Current</div>
@@ -307,7 +437,7 @@
                     <span>Power</span>
                 </div>
                 <div class="card-value">
-                    <span id="powerValue">0.00</span>
+                    <span id="powerValue">--</span>
                     <span class="card-unit">W</span>
                 </div>
                 <div class="card-footer">Active Power</div>
@@ -320,7 +450,7 @@
                     <span>Energy</span>
                 </div>
                 <div class="card-value">
-                    <span id="energyValue">0.00</span>
+                    <span id="energyValue">--</span>
                     <span class="card-unit">kWh</span>
                 </div>
                 <div class="card-footer">Total Energy Consumed</div>
@@ -333,7 +463,7 @@
                     <span>Power Factor</span>
                 </div>
                 <div class="card-value">
-                    <span id="pfValue">0.00</span>
+                    <span id="pfValue">--</span>
                 </div>
                 <div class="card-footer">Power Efficiency</div>
             </div>
@@ -347,7 +477,7 @@
                 <div class="card-value">
                     <span id="vibrationValue">
                         <span class="status-indicator status-off"></span>
-                        NORMAL
+                        NO DATA
                     </span>
                 </div>
                 <div class="card-footer">Machine vibration detection</div>
@@ -362,7 +492,7 @@
                 <div class="card-value">
                     <span id="relayValue">
                         <span class="status-indicator status-off"></span>
-                        OFF
+                        NO DATA
                     </span>
                 </div>
                 <div class="card-footer">Output control status</div>
@@ -382,67 +512,21 @@
         <div class="log-section">
             <h3><i class="fas fa-history"></i> Event Log</h3>
             <div class="log-container" id="logContainer">
-                <div class="log-entry">Waiting for data...</div>
+                <div class="log-entry">🔌 Click "Connect to Firebase" to start monitoring...</div>
             </div>
         </div>
     </div>
 
     <script>
-        // Firebase Configuration (Same as your ESP32)
-        const firebaseConfig = {
-            apiKey: "AIzaSyAjznu40IqNc99wGQPgwjLHY7VHOs7b_Ng",
-            authDomain: "machine-run-time-monitor.firebaseapp.com",
-            databaseURL: "https://machine-run-time-monitor-default-rtdb.asia-southeast1.firebasedatabase.app/",
-            projectId: "machine-run-time-monitor",
-            storageBucket: "machine-run-time-monitor.firebasestorage.app",
-            messagingSenderId: "YOUR_SENDER_ID", // You may need to add this
-            appId: "YOUR_APP_ID" // You may need to add this
-        };
-
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-
-        // Chart variables
-        let powerChart, voltageCurrentChart;
+        let app = null;
+        let database = null;
+        let powerChart = null;
+        let voltageCurrentChart = null;
         let powerData = [];
         let voltageData = [];
         let currentData = [];
         let timeLabels = [];
-
-        // Log function
-        function addLog(message, type = 'info') {
-            const logContainer = document.getElementById('logContainer');
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry';
-            const timestamp = new Date().toLocaleTimeString();
-            let icon = '<i class="fas fa-info-circle"></i>';
-            if (type === 'warning') icon = '<i class="fas fa-exclamation-triangle" style="color: #ffaa00;"></i>';
-            if (type === 'danger') icon = '<i class="fas fa-bell" style="color: #ff6b6b;"></i>';
-            if (type === 'success') icon = '<i class="fas fa-check-circle" style="color: #4ecdc4;"></i>';
-            
-            logEntry.innerHTML = `${icon} <span class="log-time">[${timestamp}]</span> ${message}`;
-            logContainer.insertBefore(logEntry, logContainer.firstChild);
-            
-            // Keep only last 50 logs
-            while (logContainer.children.length > 50) {
-                logContainer.removeChild(logContainer.lastChild);
-            }
-        }
-
-        // Update Firebase connection status
-        function updateFirebaseStatus(connected) {
-            const statusEl = document.getElementById('firebaseStatus');
-            if (connected) {
-                statusEl.className = 'status-badge status-connected';
-                statusEl.innerHTML = '<i class="fas fa-circle"></i> Firebase Connected';
-                addLog('Firebase connection established', 'success');
-            } else {
-                statusEl.className = 'status-badge status-disconnected';
-                statusEl.innerHTML = '<i class="fas fa-circle"></i> Firebase Disconnected';
-                addLog('Firebase connection lost', 'warning');
-            }
-        }
+        let listeners = [];
 
         // Initialize Charts
         function initCharts() {
@@ -528,17 +612,49 @@
             });
         }
 
-        // Update charts with new data
-        function updateCharts(voltage, current, power) {
-            const now = new Date().toLocaleTimeString();
+        // Add log entry
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            const timestamp = new Date().toLocaleTimeString();
+            let icon = '<i class="fas fa-info-circle"></i>';
+            if (type === 'warning') icon = '<i class="fas fa-exclamation-triangle" style="color: #ffaa00;"></i>';
+            if (type === 'danger') icon = '<i class="fas fa-bell" style="color: #ff6b6b;"></i>';
+            if (type === 'success') icon = '<i class="fas fa-check-circle" style="color: #4ecdc4;"></i>';
             
-            // Add new data
+            logEntry.innerHTML = `${icon} <span class="log-time">[${timestamp}]</span> ${message}`;
+            logContainer.insertBefore(logEntry, logContainer.firstChild);
+            
+            while (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        // Update Firebase connection status
+        function updateFirebaseStatus(connected, message = '') {
+            const statusEl = document.getElementById('firebaseStatus');
+            if (connected) {
+                statusEl.className = 'status-badge status-connected';
+                statusEl.innerHTML = '<i class="fas fa-circle"></i> Firebase Connected ✓';
+                if (message) addLog(message, 'success');
+            } else {
+                statusEl.className = 'status-badge status-disconnected';
+                statusEl.innerHTML = '<i class="fas fa-circle"></i> Firebase Disconnected';
+                if (message) addLog(message, 'warning');
+            }
+        }
+
+        // Update charts
+        function updateCharts(voltage, current, power) {
+            if (voltage === undefined || current === undefined || power === undefined) return;
+            
+            const now = new Date().toLocaleTimeString();
             timeLabels.push(now);
             powerData.push(power);
             voltageData.push(voltage);
             currentData.push(current);
             
-            // Keep only last 20 points
             if (timeLabels.length > 20) {
                 timeLabels.shift();
                 powerData.shift();
@@ -546,142 +662,259 @@
                 currentData.shift();
             }
             
-            // Update Power Chart
-            powerChart.data.labels = [...timeLabels];
-            powerChart.data.datasets[0].data = [...powerData];
-            powerChart.update();
-            
-            // Update Voltage/Current Chart
-            voltageCurrentChart.data.labels = [...timeLabels];
-            voltageCurrentChart.data.datasets[0].data = [...voltageData];
-            voltageCurrentChart.data.datasets[1].data = [...currentData];
-            voltageCurrentChart.update();
+            if (powerChart && voltageCurrentChart) {
+                powerChart.data.labels = [...timeLabels];
+                powerChart.data.datasets[0].data = [...powerData];
+                powerChart.update();
+                
+                voltageCurrentChart.data.labels = [...timeLabels];
+                voltageCurrentChart.data.datasets[0].data = [...voltageData];
+                voltageCurrentChart.data.datasets[1].data = [...currentData];
+                voltageCurrentChart.update();
+            }
         }
 
-        // Previous values for detecting changes
-        let prevVibration = false;
-        let prevPower = 0;
-
-        // Listen to Firebase Realtime Database
+        // Setup Firebase listeners
         function setupFirebaseListeners() {
+            if (!database) return;
+            
+            // Clear previous listeners
+            listeners.forEach(listener => listener());
+            listeners = [];
+            
             const machineRef = database.ref('/machine');
             
             // Connection status
-            database.ref('.info/connected').on('value', (snap) => {
-                updateFirebaseStatus(snap.val() === true);
-            });
-            
-            // Voltage listener
-            machineRef.child('voltage').on('value', (snap) => {
-                const voltage = snap.val() || 0;
-                document.getElementById('voltageValue').innerText = voltage.toFixed(2);
-            });
-            
-            // Current listener
-            machineRef.child('current').on('value', (snap) => {
-                const current = snap.val() || 0;
-                document.getElementById('currentValue').innerText = current.toFixed(2);
-            });
-            
-            // Power listener
-            machineRef.child('power').on('value', (snap) => {
-                const power = snap.val() || 0;
-                const prev = prevPower;
-                prevPower = power;
-                document.getElementById('powerValue').innerText = power.toFixed(2);
-                
-                // Log significant power changes (>10W)
-                if (Math.abs(power - prev) > 10 && prev !== 0) {
-                    const change = power - prev;
-                    addLog(`Power ${change > 0 ? 'increased' : 'decreased'} by ${Math.abs(change).toFixed(1)}W`, 'info');
+            const connListener = database.ref('.info/connected').on('value', (snap) => {
+                if (snap.val() === true) {
+                    updateFirebaseStatus(true, 'Firebase connection established successfully!');
+                    addLog('✅ Connected to Firebase Realtime Database', 'success');
+                } else {
+                    updateFirebaseStatus(false);
                 }
             });
+            listeners.push(() => database.ref('.info/connected').off('value', connListener));
             
-            // Energy listener
-            machineRef.child('energy').on('value', (snap) => {
-                const energy = snap.val() || 0;
-                document.getElementById('energyValue').innerText = energy.toFixed(3);
+            // Voltage
+            const voltageListener = machineRef.child('voltage').on('value', (snap) => {
+                const voltage = snap.val();
+                if (voltage !== null) {
+                    document.getElementById('voltageValue').innerText = voltage.toFixed(2);
+                }
             });
+            listeners.push(() => machineRef.child('voltage').off('value', voltageListener));
             
-            // Power Factor listener
-            machineRef.child('pf').on('value', (snap) => {
-                const pf = snap.val() || 0;
-                document.getElementById('pfValue').innerText = pf.toFixed(3);
+            // Current
+            const currentListener = machineRef.child('current').on('value', (snap) => {
+                const current = snap.val();
+                if (current !== null) {
+                    document.getElementById('currentValue').innerText = current.toFixed(2);
+                }
             });
+            listeners.push(() => machineRef.child('current').off('value', currentListener));
             
-            // Vibration listener
-            machineRef.child('vibration').on('value', (snap) => {
-                const vibration = snap.val() === true;
+            // Power
+            const powerListener = machineRef.child('power').on('value', (snap) => {
+                const power = snap.val();
+                if (power !== null) {
+                    document.getElementById('powerValue').innerText = power.toFixed(2);
+                }
+            });
+            listeners.push(() => machineRef.child('power').off('value', powerListener));
+            
+            // Energy
+            const energyListener = machineRef.child('energy').on('value', (snap) => {
+                const energy = snap.val();
+                if (energy !== null) {
+                    document.getElementById('energyValue').innerText = energy.toFixed(3);
+                }
+            });
+            listeners.push(() => machineRef.child('energy').off('value', energyListener));
+            
+            // Power Factor
+            const pfListener = machineRef.child('pf').on('value', (snap) => {
+                const pf = snap.val();
+                if (pf !== null) {
+                    document.getElementById('pfValue').innerText = pf.toFixed(3);
+                }
+            });
+            listeners.push(() => machineRef.child('pf').off('value', pfListener));
+            
+            // Vibration
+            const vibrationListener = machineRef.child('vibration').on('value', (snap) => {
+                const vibration = snap.val();
                 const vibrationSpan = document.getElementById('vibrationValue');
                 const vibrationCard = document.getElementById('vibrationCard');
                 
-                if (vibration) {
-                    vibrationSpan.innerHTML = '<span class="status-indicator status-vibration"></span> VIBRATION DETECTED!';
-                    vibrationCard.classList.add('vibration-active');
-                    addLog('⚠️ VIBRATION DETECTED! Machine may be running or experiencing issues', 'danger');
-                } else {
-                    vibrationSpan.innerHTML = '<span class="status-indicator status-off"></span> NORMAL';
-                    vibrationCard.classList.remove('vibration-active');
-                }
-                
-                // Log vibration state change
-                if (vibration !== prevVibration) {
-                    addLog(`Vibration status changed to: ${vibration ? 'ACTIVE' : 'NORMAL'}`, vibration ? 'danger' : 'success');
-                    prevVibration = vibration;
+                if (vibration !== null) {
+                    if (vibration === true) {
+                        vibrationSpan.innerHTML = '<span class="status-indicator status-vibration"></span> VIBRATION DETECTED!';
+                        vibrationCard.classList.add('vibration-active');
+                        addLog('⚠️ VIBRATION DETECTED! Machine is running', 'danger');
+                    } else {
+                        vibrationSpan.innerHTML = '<span class="status-indicator status-off"></span> NORMAL';
+                        vibrationCard.classList.remove('vibration-active');
+                    }
                 }
             });
+            listeners.push(() => machineRef.child('vibration').off('value', vibrationListener));
             
-            // Relay status listener
-            machineRef.child('relay_status').on('value', (snap) => {
-                const relay = snap.val() === true;
+            // Relay
+            const relayListener = machineRef.child('relay_status').on('value', (snap) => {
+                const relay = snap.val();
                 const relaySpan = document.getElementById('relayValue');
                 
-                if (relay) {
-                    relaySpan.innerHTML = '<span class="status-indicator status-on"></span> ON (Buzzer Active)';
-                    addLog('Relay activated - Buzzer ON', 'warning');
-                } else {
-                    relaySpan.innerHTML = '<span class="status-indicator status-off"></span> OFF';
+                if (relay !== null) {
+                    if (relay === true) {
+                        relaySpan.innerHTML = '<span class="status-indicator status-on"></span> ON (Buzzer Active)';
+                    } else {
+                        relaySpan.innerHTML = '<span class="status-indicator status-off"></span> OFF';
+                    }
                 }
             });
+            listeners.push(() => machineRef.child('relay_status').off('value', relayListener));
             
-            // Combined listener for charts - listen to all three
+            // Combined for charts
             let lastVoltage = 0, lastCurrent = 0, lastPower = 0;
-            machineRef.child('voltage').on('value', (snap) => {
+            const chartVoltageListener = machineRef.child('voltage').on('value', (snap) => {
                 lastVoltage = snap.val() || 0;
-                if (lastCurrent !== 0 || lastPower !== 0) {
-                    updateCharts(lastVoltage, lastCurrent, lastPower);
-                }
+                updateCharts(lastVoltage, lastCurrent, lastPower);
             });
-            machineRef.child('current').on('value', (snap) => {
+            const chartCurrentListener = machineRef.child('current').on('value', (snap) => {
                 lastCurrent = snap.val() || 0;
-                if (lastVoltage !== 0 || lastPower !== 0) {
-                    updateCharts(lastVoltage, lastCurrent, lastPower);
-                }
+                updateCharts(lastVoltage, lastCurrent, lastPower);
             });
-            machineRef.child('power').on('value', (snap) => {
+            const chartPowerListener = machineRef.child('power').on('value', (snap) => {
                 lastPower = snap.val() || 0;
-                if (lastVoltage !== 0 || lastCurrent !== 0) {
-                    updateCharts(lastVoltage, lastCurrent, lastPower);
-                }
+                updateCharts(lastVoltage, lastCurrent, lastPower);
             });
             
-            addLog('Real-time monitoring active - listening to Firebase', 'success');
+            listeners.push(() => machineRef.child('voltage').off('value', chartVoltageListener));
+            listeners.push(() => machineRef.child('current').off('value', chartCurrentListener));
+            listeners.push(() => machineRef.child('power').off('value', chartPowerListener));
+            
+            addLog('📡 Firebase listeners active - waiting for ESP32 data...', 'success');
+        }
+
+        // Connect to Firebase
+        function connectToFirebase() {
+            try {
+                const apiKey = document.getElementById('apiKeyInput').value.trim();
+                const databaseURL = document.getElementById('databaseUrlInput').value.trim();
+                const projectId = document.getElementById('projectIdInput').value.trim();
+                
+                if (!apiKey || !databaseURL) {
+                    addLog('❌ Please enter both API Key and Database URL', 'danger');
+                    return;
+                }
+                
+                // Disconnect existing connection
+                disconnectFirebase();
+                
+                // Save to localStorage
+                localStorage.setItem('firebaseConfig', JSON.stringify({
+                    apiKey, databaseURL, projectId
+                }));
+                
+                // Initialize Firebase
+                const firebaseConfig = {
+                    apiKey: apiKey,
+                    databaseURL: databaseURL,
+                    projectId: projectId || 'machine-run-time-monitor'
+                };
+                
+                app = firebase.initializeApp(firebaseConfig);
+                database = firebase.database(app);
+                
+                updateFirebaseStatus(false, 'Connecting to Firebase...');
+                addLog('🔌 Attempting to connect to Firebase...', 'info');
+                
+                // Setup listeners
+                setupFirebaseListeners();
+                
+                // Hide config panel after connection (optional)
+                // document.getElementById('configPanel').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Firebase connection error:', error);
+                addLog(`❌ Connection failed: ${error.message}`, 'danger');
+                updateFirebaseStatus(false);
+            }
         }
         
-        // Error handling for Firebase
-        database.ref('/machine').on('error', (error) => {
-            console.error('Firebase error:', error);
-            addLog(`Firebase error: ${error.message}`, 'danger');
-        });
+        // Disconnect Firebase
+        function disconnectFirebase() {
+            if (listeners.length > 0) {
+                listeners.forEach(listener => listener());
+                listeners = [];
+            }
+            
+            if (app) {
+                // Note: Firebase doesn't have a direct delete method, but we can clear references
+                database = null;
+                app = null;
+            }
+            
+            // Reset display values
+            document.getElementById('voltageValue').innerText = '--';
+            document.getElementById('currentValue').innerText = '--';
+            document.getElementById('powerValue').innerText = '--';
+            document.getElementById('energyValue').innerText = '--';
+            document.getElementById('pfValue').innerText = '--';
+            document.getElementById('vibrationValue').innerHTML = '<span class="status-indicator status-off"></span> NO DATA';
+            document.getElementById('relayValue').innerHTML = '<span class="status-indicator status-off"></span> NO DATA';
+            document.getElementById('vibrationCard').classList.remove('vibration-active');
+            
+            // Clear charts
+            timeLabels = [];
+            powerData = [];
+            voltageData = [];
+            currentData = [];
+            if (powerChart) {
+                powerChart.data.labels = [];
+                powerChart.data.datasets[0].data = [];
+                powerChart.update();
+            }
+            if (voltageCurrentChart) {
+                voltageCurrentChart.data.labels = [];
+                voltageCurrentChart.data.datasets[0].data = [];
+                voltageCurrentChart.data.datasets[1].data = [];
+                voltageCurrentChart.update();
+            }
+            
+            updateFirebaseStatus(false, 'Disconnected from Firebase');
+            addLog('🔌 Disconnected from Firebase', 'warning');
+            
+            // Show config panel
+            // document.getElementById('configPanel').style.display = 'block';
+        }
         
-        // Initialize everything when page loads
+        // Load saved config from localStorage
+        function loadSavedConfig() {
+            const saved = localStorage.getItem('firebaseConfig');
+            if (saved) {
+                const config = JSON.parse(saved);
+                document.getElementById('apiKeyInput').value = config.apiKey || '';
+                document.getElementById('databaseUrlInput').value = config.databaseURL || '';
+                document.getElementById('projectIdInput').value = config.projectId || '';
+                addLog('📁 Loaded saved Firebase configuration', 'success');
+                connectToFirebase();
+            } else {
+                addLog('ℹ️ No saved configuration found', 'info');
+            }
+        }
+        
+        // Auto-load on page load
         document.addEventListener('DOMContentLoaded', () => {
             initCharts();
-            setupFirebaseListeners();
-            
-            // Add initial welcome log
-            addLog('Dashboard loaded - Machine Run Time Monitor', 'success');
-            addLog('Waiting for ESP32 data...', 'info');
+            const saved = localStorage.getItem('firebaseConfig');
+            if (saved) {
+                const config = JSON.parse(saved);
+                document.getElementById('apiKeyInput').value = config.apiKey || '';
+                document.getElementById('databaseUrlInput').value = config.databaseURL || '';
+                document.getElementById('projectIdInput').value = config.projectId || '';
+                setTimeout(() => connectToFirebase(), 500);
+            }
         });
     </script>
 </body>
